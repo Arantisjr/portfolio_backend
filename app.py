@@ -2,7 +2,7 @@ import os
 import re
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timezone  # Added timezone import
+from datetime import datetime
 from dotenv import load_dotenv
 from flask_cors import CORS
 
@@ -34,16 +34,16 @@ class Writing(db.Model):
     slug = db.Column(db.String(200), unique=True, nullable=False)
     subtitle = db.Column(db.String(200), nullable=True)
     content = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(100), nullable=False, default='Me')  # Fixed missing comma
+    author = db.Column(db.String(100), nullable=False, default='Me')
     reading_time = db.Column(db.Integer, nullable=False)
     created_at = db.Column(
         db.DateTime, 
-        default=lambda: datetime.now(timezone.utc)  # Timezone-aware
+        default=datetime.now
     )
     updated_at = db.Column(
         db.DateTime, 
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)  # Auto-updates
+        default=datetime.now,
+        onupdate=datetime.now
     )
     
     def serialize(self):
@@ -55,20 +55,20 @@ class Writing(db.Model):
             'content': self.content,
             'author': self.author,
             'reading_time': self.reading_time,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S')
         }
 
 # Routes
 @app.route('/writings', methods=['GET'])
 def get_writings():
-    writings = Writing.query.order_by(Writing.created_at.desc()).all()  # Removed extra )
-    return jsonify([w.serialize() for w in writings])  # Added () to serialize
+    writings = Writing.query.order_by(Writing.created_at.desc()).all()
+    return jsonify([w.serialize() for w in writings])
 
 @app.route('/writings/<slug>', methods=['GET'])
 def get_writing_by_slug(slug):
     writing = Writing.query.filter_by(slug=slug).first_or_404()
-    return jsonify(writing.serialize())  # Added () to serialize
+    return jsonify(writing.serialize())
 
 @app.route('/writings', methods=['POST'])
 def add_writing():
@@ -122,6 +122,17 @@ def update_writing(writing_id):
     
     db.session.commit()
     return jsonify(writing.serialize())
+
+@app.route('/writings/<int:writing_id>', methods=['DELETE'])
+def delete_writing(writing_id):
+    token = request.headers.get('Authorization')
+    if token != f"Bearer {AUTH_TOKEN}":
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    writing = Writing.query.get_or_404(writing_id)
+    db.session.delete(writing)
+    db.session.commit()
+    return jsonify({'message': 'Writing deleted successfully'}), 200
 
 if __name__ == '__main__':
     with app.app_context():
