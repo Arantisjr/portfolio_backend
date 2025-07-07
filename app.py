@@ -4,11 +4,13 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone  # Added timezone import
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 # Loading the environment variables
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Configuring the database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
